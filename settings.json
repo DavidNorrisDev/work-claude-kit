@@ -1,0 +1,61 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/statusline.sh"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild *)",
+      "Bash(swift build *)",
+      "Bash(swift test *)",
+      "Bash(swiftformat *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git log *)",
+      "Bash(gh *)",
+      "Bash(jq *)",
+      "Bash(xcrun simctl *)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(rm -rf *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/resume-context.sh\"" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/reap-sim-clones.sh\"" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/context-budget.sh\"" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/verify-wiring.sh\" --warn \"$CLAUDE_PROJECT_DIR\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/swiftformat-hook.sh\"" }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/verify-build.sh\"" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/block-generated.sh\"" }
+        ]
+      }
+    ]
+  }
+}

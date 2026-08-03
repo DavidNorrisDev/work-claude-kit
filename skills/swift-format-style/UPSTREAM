@@ -1,0 +1,9 @@
+# Vendored third-party skill — DO NOT EDIT.
+# Managed by scripts/sync-vendored-skills.sh from skills/vendored.manifest.
+# Local edits are overwritten on the next sync. To change it: edit upstream,
+# or bump the pin in the manifest (after reviewing the diff and re-auditing).
+upstream: https://github.com/n0an/Swift-FormatStyle-Agent-Skill
+subpath:  swift-format-style
+pinned:   20f0e18
+license:  MIT
+audited:  2026-06-30

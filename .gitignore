@@ -1,0 +1,15 @@
+# Ledger content is machine-local and may contain work-derived summaries.
+# It lives outside this repo by default (~/work-ledger); this guard is a
+# belt-and-braces exclusion in case anyone points WORK_LEDGER_DIR inside.
+/ledger/
+work-ledger.md
+work-repos.md
+reviews/
+
+# SDD scratch
+.superpowers/
+
+# OS / editor
+.DS_Store
+*.swp
+.claude/settings.local.json
