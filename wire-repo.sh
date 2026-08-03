@@ -67,9 +67,28 @@ else
 fi
 
 # Record the repo in the ledger roster so the miner and check-in sweep it.
-ABS="$(cd "$APP_DIR" && pwd)"
+# Physical (-P) path: verify-wiring.sh and Claude Code's own transcript
+# naming both resolve through symlinks, so a logical path here would never
+# match on a repo reached via a symlinked component (a `/var` mount, a `~/work`
+# symlink, an external volume) — verify-wiring would then warn "not on the
+# roster" forever, for a repo that was correctly wired seconds earlier.
+ABS="$(cd -P "$APP_DIR" && pwd)"
 mkdir -p "$LEDGER_DIR"
 touch "$LEDGER_DIR/work-repos.md"
+
+# Migrate a stale pre-fix row that recorded this same repo under its logical
+# (non -P) path, so re-wiring after this fix updates the existing row in
+# place rather than leaving the old one stale and appending a duplicate.
+LOGICAL_ABS="$(cd "$APP_DIR" && pwd)"
+if [ "$LOGICAL_ABS" != "$ABS" ] && grep -q "| $LOGICAL_ABS |" "$LEDGER_DIR/work-repos.md" 2>/dev/null; then
+  TMP_ROSTER="$(mktemp "$LEDGER_DIR/.work-repos.md.XXXXXX")"
+  trap 'rm -f "$TMP_ROSTER"' EXIT
+  sed "s#| $LOGICAL_ABS |#| $ABS |#" "$LEDGER_DIR/work-repos.md" > "$TMP_ROSTER"
+  mv -f "$TMP_ROSTER" "$LEDGER_DIR/work-repos.md"
+  trap - EXIT
+  echo "Migrated stale roster row from $LOGICAL_ABS to the physical path $ABS."
+fi
+
 if ! grep -q "| $ABS |" "$LEDGER_DIR/work-repos.md" 2>/dev/null; then
   echo "| $SCHEME | $ABS | $SCHEME | active |" >> "$LEDGER_DIR/work-repos.md"
   echo "Recorded $ABS in $LEDGER_DIR/work-repos.md."

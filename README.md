@@ -97,6 +97,12 @@ actionable; just re-run `./wire-repo.sh <repo-dir> <scheme>` on the repo.
 It's idempotent and safe — it only adds what's missing and won't disturb
 anything already in place.
 
+That same re-run also corrects the roster row. Repos wired before the path
+fix recorded a logical path, which never matched what `verify-wiring.sh`
+resolves when any part of the path is a symlink — so the roster check
+warned forever. Re-wiring rewrites the row in place rather than adding a
+duplicate; a repo you never re-wire keeps its stale row.
+
 The two ledger skills (`check-in`, `ledger-backfill`) end up linked twice on
 a wired repo — once at user level by `install.sh`, once again here (the
 whole `skills/` directory is symlinked in). That's harmless — project

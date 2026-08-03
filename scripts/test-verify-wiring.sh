@@ -115,5 +115,37 @@ OUT="$("$V" --warn "$TMP/no-such-app-dir" 2>&1)"; RC=$?
 # 12. verbose (non-warn) mode against a non-existent directory still fails loudly
 "$V" "$TMP/no-such-app-dir" >/dev/null 2>&1 && bad "verbose mode on a missing directory should fail" || ok
 
+# 13-15. regression: a repo reached through a symlinked path component must
+# still verify clean after wire-repo.sh wires it. wire-repo.sh used to record
+# the roster path with a logical `cd` (no -P) while verify-wiring.sh always
+# resolves $APP_DIR with `cd -P` — on macOS TMPDIR itself sits under
+# /var -> /private/var, so the two disagreed for every repo under a plain
+# `mktemp -d`, and verify-wiring --warn would report "not on the roster"
+# forever for a repo that had just been wired correctly. A manual symlink is
+# added on top so the regression doesn't depend on the host's own TMPDIR
+# happening to be symlinked.
+KITROOT="$(cd -P "$HERE/.." && pwd)"
+cp "$KITROOT/wire-repo.sh" "$KIT/wire-repo.sh"
+chmod +x "$KIT/wire-repo.sh"
+cp "$KITROOT/CLAUDE.app-template.md" "$KIT/CLAUDE.app-template.md"
+
+mkdir -p "$TMP/real-place"
+ln -s "$TMP/real-place" "$TMP/symlinked-parent"
+SYMAPP="$TMP/symlinked-parent/SymApp"
+mkdir -p "$SYMAPP"
+LEDGER2="$TMP/ledger-symlink-regression"
+WORK_LEDGER_DIR="$LEDGER2" "$KIT/wire-repo.sh" "$SYMAPP" "SymScheme" >/dev/null 2>&1
+
+SYMAPP_PHYSICAL="$(cd -P "$SYMAPP" && pwd)"
+grep -q "| $SYMAPP_PHYSICAL |" "$LEDGER2/work-repos.md" 2>/dev/null \
+  && ok || bad "wire-repo.sh should record the PHYSICAL path in the roster"
+
+WORK_LEDGER_DIR="$LEDGER2" "$V" "$SYMAPP" >/dev/null 2>&1 \
+  && ok || bad "verify-wiring should pass a repo wired through a symlinked path"
+
+OUT="$(WORK_LEDGER_DIR="$LEDGER2" "$V" --warn "$SYMAPP" 2>&1)"
+[ -z "$OUT" ] && ok \
+  || bad "--warn should be silent for a repo wired through a symlinked path (got: $OUT)"
+
 printf 'test-verify-wiring: %s passed, %s failed\n' "$PASS" "$FAIL"
 [ "$FAIL" = "0" ]
