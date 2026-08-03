@@ -13,3 +13,6 @@ reviews/
 .DS_Store
 *.swp
 .claude/settings.local.json
+
+# Session working memory (never committed — see scripts/vendored-skills-drift-hook.sh)
+.claude/state/

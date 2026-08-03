@@ -1,0 +1,28 @@
+# Vendored third-party agent skills — see skills/VENDORED.md for the policy.
+# Single source of truth for scripts/sync-vendored-skills.sh.
+# Pipe-delimited. Columns:
+#   dest | repo_url | pin_sha | subpath | license | audited(YYYY-MM-DD)
+# Bump a pin ONLY after reviewing the upstream diff (sync-vendored-skills.sh --check)
+# and re-confirming the audit. Then run the script (no --check) and commit.
+#
+# dest | repo_url | pin_sha | subpath | license | audited
+#
+# Apple security craft — swift-security from dpearson2699/swift-ios-skills (884★).
+# Covers the shared iOS/macOS security API surface: Keychain, CryptoKit, Secure
+# Enclave, LocalAuthentication, credential storage, cert pinning, OWASP MASVS/MASTG.
+# Pairs with the kit-local macos-hardening skill (Mac-only distribution surface).
+# Audited 2026-08-03 (ADOPT-WITH-CAVEATS): markdown-only, no executables, no
+# injection patterns; compliance-owasp-mapping.md documents audit tooling
+# (Frida/objection hooks) in defensive MASTG framing — acceptable. Caveats:
+# (1) LICENCE IS POLYFORM PERIMETER 1.0.0, NOT MIT — the only non-MIT vendored
+#     skill. It grants an explicit Distribution License, conditioned on the
+#     Notices clause (recipients must receive the licence terms and every
+#     "Required Notice:" line — satisfied by carrying LICENSE verbatim, which
+#     the sync does). The live restriction is Noncompete: it may not be used to
+#     provide a product that competes with the licensed software. This repo is
+#     public and that is fine. The SKILL.md frontmatter says "license: MIT" —
+#     that is a stale upstream error; the repo LICENSE governs.
+# (2) Its "Sibling Boundaries" section hands off to sibling skills we do NOT
+#     vendor (authentication, cryptokit, device-integrity, ios-networking,
+#     app-store-review) — those handoffs are no-ops here.
+swift-security|https://github.com/dpearson2699/swift-ios-skills|8d90fd1|skills/swift-security|PolyForm-Perimeter-1.0.0|2026-08-03

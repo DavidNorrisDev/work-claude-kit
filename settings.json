@@ -30,6 +30,7 @@
         "hooks": [
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/resume-context.sh\"" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/reap-sim-clones.sh\"" },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/vendored-skills-drift-hook.sh\"" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/context-budget.sh\"" },
           { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/verify-wiring.sh\" --warn \"$CLAUDE_PROJECT_DIR\"" }
         ]
