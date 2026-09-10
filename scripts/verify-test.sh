@@ -25,7 +25,9 @@ trap cleanup EXIT INT TERM
 # a UDID on the newest iOS runtime. pl_resolve_container honours
 # VERIFY_WORKSPACE, else passes the single discovered workspace/project.
 . "$HERE/verify-resolve.sh"
-DESTINATION="$(pl_resolve_destination)"
+pl_resolve_destination >/dev/null
+DESTINATION="$PL_DESTINATION"
+if [ -n "${PL_DEST_NOTE:-}" ]; then printf '⚠️  %s\n' "$PL_DEST_NOTE"; fi
 pl_resolve_container
 if [ -n "$PL_CONTAINER_FLAG" ]; then
   OUT="$(xcodebuild "$PL_CONTAINER_FLAG" "$PL_CONTAINER_PATH" -scheme "$SCHEME" -destination "$DESTINATION" \

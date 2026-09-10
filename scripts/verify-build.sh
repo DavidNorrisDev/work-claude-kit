@@ -25,7 +25,9 @@ esac
 # machines with duplicate device names across runtimes).
 HERE="$(cd -P "$(dirname "$0")" && pwd)"
 . "$HERE/verify-resolve.sh"
-DESTINATION="$(pl_resolve_destination)"
+pl_resolve_destination >/dev/null
+DESTINATION="$PL_DESTINATION"
+if [ -n "${PL_DEST_NOTE:-}" ]; then printf '⚠️  %s\n' "$PL_DEST_NOTE"; fi
 MAX_BUILDS="${VERIFY_MAX_BUILDS:-2}"
 WAIT_BUDGET="${VERIFY_BUILD_WAIT:-240}"
 STALE_AFTER=1800   # reclaim a slot whose holder has run longer than this (s)

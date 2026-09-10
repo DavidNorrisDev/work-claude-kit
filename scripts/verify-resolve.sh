@@ -12,6 +12,7 @@
 #   VERIFY_DESTINATION  full xcodebuild -destination string, used verbatim
 #   VERIFY_PLATFORM     ios | macos — skips the SDKROOT heuristic
 #   VERIFY_SIM_NAME     simulator name to resolve (default: iPhone 17 Pro)
+#   VERIFY_RUNTIME      pin an iOS runtime (e.g. 27.0, or 26 for the newest 26.x)
 #   VERIFY_WORKSPACE    explicit .xcworkspace path (highest container priority)
 
 # --- Container: which workspace/project should xcodebuild open? -------------
@@ -70,32 +71,79 @@ pl_detect_platform() {
 # ambiguously on machines with duplicate device names across runtimes (and
 # hard-error on uninstalled placeholder runtimes), so resolve the name to the
 # UDID of the matching device on the NEWEST installed iOS runtime instead.
+#
+# "Newest installed" and "newest that has this device" are different things, and
+# they diverge in silence: a freshly installed runtime can arrive with NO
+# devices created on it, and the search then falls through to an older runtime
+# that has one. The resolver sets PL_DEST_NOTE when that happens, and the
+# verify scripts print it.
+# Sets PL_DESTINATION and PL_DEST_NOTE, and prints the destination. Call it
+# WITHOUT a subshell (`pl_resolve_destination >/dev/null`) if you want the note:
+# `$(...)` runs in a subshell and the note dies with it.
 pl_resolve_destination() {
+  PL_DEST_NOTE=""
+  PL_DESTINATION=""
   if [ -n "${VERIFY_DESTINATION:-}" ]; then
-    printf '%s\n' "$VERIFY_DESTINATION"
+    PL_DESTINATION="$VERIFY_DESTINATION"
+    printf '%s\n' "$PL_DESTINATION"
     return 0
   fi
   if [ "$(pl_detect_platform)" = "macos" ]; then
-    echo "platform=macOS"
+    PL_DESTINATION="platform=macOS"
+    echo "$PL_DESTINATION"
     return 0
   fi
   name="${VERIFY_SIM_NAME:-iPhone 17 Pro}"
-  udid="$(xcrun simctl list -j devices available 2>/dev/null \
-    | jq -r --arg n "$name" '
-        .devices | to_entries
-        | map(select(.key | test("SimRuntime\\.iOS-")))
-        | map(.v = ((.key | try (capture("iOS-(?<a>[0-9]+)-(?<b>[0-9]+)")
-                                 | [(.a | tonumber), (.b | tonumber)])) // [0, 0]))
-        | sort_by(.v) | reverse
-        | .[].value[]?
-        | select(.name == $n)
-        | .udid
-      ' 2>/dev/null | head -n 1)"
+  want="${VERIFY_RUNTIME:-}"
+  devs="$(xcrun simctl list -j devices available 2>/dev/null)"
+
+  # Every installed iOS runtime, NEWEST FIRST, as "27.0 <key>" lines. The
+  # ordering is jq's, not sort's: BSD `sort -t. -k1,1n -r` silently ignores the
+  # reverse on these lines and hands back ascending order, which is a fallback
+  # to the OLDEST runtime that looks exactly like a working resolve. The
+  # fixture test caught it; nothing else would have.
+  runtimes="$(printf '%s' "$devs" | jq -r '
+      .devices | keys
+      | map(select(test("SimRuntime\\.iOS-")))
+      | map({k: ., v: ((capture("iOS-(?<a>[0-9]+)-(?<b>[0-9]+)")
+                        | [(.a | tonumber), (.b | tonumber)]) // [0, 0])})
+      | sort_by(.v) | reverse | .[] | "\(.v[0]).\(.v[1]) \(.k)"
+    ' 2>/dev/null)"
+  newest="$(printf '%s' "$runtimes" | head -n 1 | cut -d' ' -f1)"
+
+  # Walk them newest first and take the first that has a device of this name.
+  # A VERIFY_RUNTIME pin ("27.0", or "26" for the newest 26.x) filters first.
+  # `while read` rather than `for row in $runtimes`: zsh does not word-split an
+  # unquoted variable on IFS, so the for-loop form runs ONCE with every line
+  # glued together, the lookup misses, and the resolver falls back to the
+  # by-name destination — silently, and only when this file is sourced into a
+  # zsh shell rather than run by the bash-shebanged verify scripts. A here-doc
+  # feeds the loop without a pipe, so `break` still leaves the function.
+  chosen=""; udid=""
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    ver="${row%% *}"; key="${row#* }"
+    if [ -n "$want" ]; then
+      case "$ver" in "$want"|"$want".*) ;; *) continue ;; esac
+    fi
+    udid="$(printf '%s' "$devs" | jq -r --arg k "$key" --arg n "$name" \
+              '.devices[$k][]? | select(.name == $n) | .udid' 2>/dev/null | head -n 1)"
+    if [ -n "$udid" ]; then chosen="$ver"; break; fi
+  done <<RUNTIMES
+$runtimes
+RUNTIMES
+
   if [ -n "$udid" ]; then
-    printf 'platform=iOS Simulator,id=%s\n' "$udid"
+    if [ -z "$want" ] && [ -n "$newest" ] && [ "$chosen" != "$newest" ]; then
+      PL_DEST_NOTE="iOS ${newest} is installed but has no \"${name}\" — building on ${chosen}. Create one (xcrun simctl create \"${name}\" <devicetype> <runtime>) or pin with VERIFY_RUNTIME."
+    fi
+    PL_DESTINATION="platform=iOS Simulator,id=$udid"
+    printf '%s\n' "$PL_DESTINATION"
   else
     # No such simulator on this machine — fall back to the by-name form so the
     # xcodebuild error names the missing device instead of us failing silently.
-    printf 'platform=iOS Simulator,name=%s\n' "$name"
+    [ -n "$want" ] && PL_DEST_NOTE="No \"${name}\" on an iOS ${want} runtime."
+    PL_DESTINATION="platform=iOS Simulator,name=$name"
+    printf '%s\n' "$PL_DESTINATION"
   fi
 }
