@@ -69,8 +69,11 @@ Always respect the system setting — calm *and* accessible is the bar.
 ```swift
 @Environment(\.accessibilityReduceMotion) private var reduceMotion
 …
-.animation(AppMotion.resolved(.standard, reduceMotion: reduceMotion), value: state)
+.animation(AppMotion.resolved(AppMotion.standard, reduceMotion: reduceMotion), value: state)
 ```
+
+Write the token in full: `resolved` takes an `Animation`, not a case of an enum, so
+the leading-dot `.standard` does not compile.
 
 When Reduce Motion is on, favour cross-fades and opacity over movement; `AppMotion.resolved(_:reduceMotion:)` swaps to a quick fade for you.
 
